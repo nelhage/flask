@@ -62,7 +62,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'Werkzeug>=0.6.1',
+        'Werkzeug>=0.6.1,<0.7',
         'Jinja2>=2.4'
     ],
     classifiers=[
