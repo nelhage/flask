@@ -56,9 +56,9 @@ class ContextTestCase(unittest.TestCase):
             return flask.request.url
 
         with app.test_request_context('/?name=World'):
-            assert index() == 'Hello World!'
+            self.assertEqual(index(), 'Hello World!')
         with app.test_request_context('/meh'):
-            assert meh() == 'http://localhost/meh'
+            self.assertEqual(meh(), 'http://localhost/meh')
         assert flask._request_ctx_stack.top is None
 
     def test_manual_context_binding(self):
@@ -69,7 +69,7 @@ class ContextTestCase(unittest.TestCase):
 
         ctx = app.test_request_context('/?name=World')
         ctx.push()
-        assert index() == 'Hello World!'
+        self.assertEqual(index(), 'Hello World!')
         ctx.pop()
         try:
             index()
@@ -91,14 +91,14 @@ class ContextTestCase(unittest.TestCase):
 
         with app.test_client() as c:
             resp = c.get('/')
-            assert flask.g.value == 42
-            assert resp.data == 'Hello World!'
-            assert resp.status_code == 200
+            self.assertEqual(flask.g.value, 42)
+            self.assertEqual(resp.data, 'Hello World!')
+            self.assertEqual(resp.status_code, 200)
 
             resp = c.get('/other')
             assert not hasattr(flask.g, 'value')
             assert 'Internal Server Error' in resp.data
-            assert resp.status_code == 500
+            self.assertEqual(resp.status_code, 500)
             flask.g.value = 23
 
         try:
@@ -117,8 +117,8 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def index():
             return 'Hello World'
         rv = app.test_client().open('/', method='OPTIONS')
-        assert sorted(rv.allow) == ['GET', 'HEAD', 'OPTIONS', 'POST']
-        assert rv.data == ''
+        self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS', 'POST'])
+        self.assertEqual(rv.data, '')
 
     def test_options_on_multiple_rules(self):
         app = flask.Flask(__name__)
@@ -128,8 +128,9 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         @app.route('/', methods=['PUT'])
         def index_put():
             return 'Aha!'
+        flask.woohoo = True
         rv = app.test_client().open('/', method='OPTIONS')
-        assert sorted(rv.allow) == ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT']
+        self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT'])
 
     def test_request_dispatching(self):
         app = flask.Flask(__name__)
@@ -141,18 +142,18 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             return flask.request.method
 
         c = app.test_client()
-        assert c.get('/').data == 'GET'
+        self.assertEqual(c.get('/').data, 'GET')
         rv = c.post('/')
-        assert rv.status_code == 405
-        assert sorted(rv.allow) == ['GET', 'HEAD', 'OPTIONS']
+        self.assertEqual(rv.status_code, 405)
+        self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS'])
         rv = c.head('/')
-        assert rv.status_code == 200
+        self.assertEqual(rv.status_code, 200)
         assert not rv.data  # head truncates
-        assert c.post('/more').data == 'POST'
-        assert c.get('/more').data == 'GET'
+        self.assertEqual(c.post('/more').data, 'POST')
+        self.assertEqual(c.get('/more').data, 'GET')
         rv = c.delete('/more')
-        assert rv.status_code == 405
-        assert sorted(rv.allow) == ['GET', 'HEAD', 'OPTIONS', 'POST']
+        self.assertEqual(rv.status_code, 405)
+        self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS', 'POST'])
 
     def test_url_mapping(self):
         app = flask.Flask(__name__)
@@ -165,18 +166,18 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         app.add_url_rule('/more', 'more', more, methods=['GET', 'POST'])
 
         c = app.test_client()
-        assert c.get('/').data == 'GET'
+        self.assertEqual(c.get('/').data, 'GET')
         rv = c.post('/')
-        assert rv.status_code == 405
-        assert sorted(rv.allow) == ['GET', 'HEAD', 'OPTIONS']
+        self.assertEqual(rv.status_code, 405)
+        self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS'])
         rv = c.head('/')
-        assert rv.status_code == 200
+        self.assertEqual(rv.status_code, 200)
         assert not rv.data  # head truncates
-        assert c.post('/more').data == 'POST'
-        assert c.get('/more').data == 'GET'
+        self.assertEqual(c.post('/more').data, 'POST')
+        self.assertEqual(c.get('/more').data, 'GET')
         rv = c.delete('/more')
-        assert rv.status_code == 405
-        assert sorted(rv.allow) == ['GET', 'HEAD', 'OPTIONS', 'POST']
+        self.assertEqual(rv.status_code, 405)
+        self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS', 'POST'])
 
     def test_session(self):
         app = flask.Flask(__name__)
@@ -190,8 +191,8 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             return flask.session['value']
 
         c = app.test_client()
-        assert c.post('/set', data={'value': '42'}).data == 'value set'
-        assert c.get('/get').data == '42'
+        self.assertEqual(c.post('/set', data={'value': '42'}).data, 'value set')
+        self.assertEqual(c.get('/get').data, '42')
 
     def test_session_using_server_name(self):
         app = flask.Flask(__name__)
@@ -235,9 +236,9 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         match = re.search(r'\bexpires=([^;]+)', rv.headers['set-cookie'])
         expires = parse_date(match.group())
         expected = datetime.utcnow() + app.permanent_session_lifetime
-        assert expires.year == expected.year
-        assert expires.month == expected.month
-        assert expires.day == expected.day
+        self.assertEqual(expires.year, expected.year)
+        self.assertEqual(expires.month, expected.month)
+        self.assertEqual(expires.day, expected.day)
 
         permanent = False
         rv = app.test_client().get('/')
@@ -255,7 +256,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             flask.session.modified = False
             flask.flash('Zip')
             assert flask.session.modified
-            assert list(flask.get_flashed_messages()) == ['Zap', 'Zip']
+            self.assertEqual(list(flask.get_flashed_messages()), ['Zap', 'Zip'])
 
     def test_extended_flashing(self):
         app = flask.Flask(__name__)
@@ -271,16 +272,16 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         @app.route('/test')
         def test():
             messages = flask.get_flashed_messages(with_categories=True)
-            assert len(messages) == 3
-            assert messages[0] == ('message', u'Hello World')
-            assert messages[1] == ('error', u'Hello World')
-            assert messages[2] == ('warning', flask.Markup(u'<em>Testing</em>'))
+            self.assertEqual(len(messages), 3)
+            self.assertEqual(messages[0], ('message', u'Hello World'))
+            self.assertEqual(messages[1], ('error', u'Hello World'))
+            self.assertEqual(messages[2], ('warning', flask.Markup(u'<em>Testing</em>')))
             return ''
             messages = flask.get_flashed_messages()
-            assert len(messages) == 3
-            assert messages[0] == u'Hello World'
-            assert messages[1] == u'Hello World'
-            assert messages[2] == flask.Markup(u'<em>Testing</em>')
+            self.assertEqual(len(messages), 3)
+            self.assertEqual(messages[0], u'Hello World')
+            self.assertEqual(messages[1], u'Hello World')
+            self.assertEqual(messages[2], flask.Markup(u'<em>Testing</em>'))
 
         c = app.test_client()
         c.get('/')
@@ -305,7 +306,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         assert 'after' not in evts
         rv = app.test_client().get('/').data
         assert 'after' in evts
-        assert rv == 'request|after'
+        self.assertEqual(rv, 'request|after')
 
     def test_after_request_errors(self):
         app = flask.Flask(__name__)
@@ -318,9 +319,9 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def fails():
             1/0
         rv = app.test_client().get('/')
-        assert rv.status_code == 500
+        self.assertEqual(rv.status_code, 500)
         assert 'Internal Server Error' in rv.data
-        assert len(called) == 1
+        self.assertEqual(len(called), 1)
 
     def test_after_request_handler_error(self):
         called = []
@@ -334,9 +335,9 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def fails():
             1/0
         rv = app.test_client().get('/')
-        assert rv.status_code == 500
+        self.assertEqual(rv.status_code, 500)
         assert 'Internal Server Error' in rv.data
-        assert len(called) == 1
+        self.assertEqual(len(called), 1)
 
     def test_before_after_request_order(self):
         called = []
@@ -359,8 +360,8 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def index():
             return '42'
         rv = app.test_client().get('/')
-        assert rv.data == '42'
-        assert called == [1, 2, 3, 4]
+        self.assertEqual(rv.data, '42')
+        self.assertEqual(called, [1, 2, 3, 4])
 
     def test_error_handling(self):
         app = flask.Flask(__name__)
@@ -378,11 +379,11 @@ class BasicFunctionalityTestCase(unittest.TestCase):
             1 // 0
         c = app.test_client()
         rv = c.get('/')
-        assert rv.status_code == 404
-        assert rv.data == 'not found'
+        self.assertEqual(rv.status_code, 404)
+        self.assertEqual(rv.data, 'not found')
         rv = c.get('/error')
-        assert rv.status_code == 500
-        assert 'internal server error' == rv.data
+        self.assertEqual(rv.status_code, 500)
+        self.assertEqual('internal server error', rv.data)
 
     def test_response_creation(self):
         app = flask.Flask(__name__)
@@ -396,31 +397,31 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def from_tuple():
             return 'Meh', 400, {'X-Foo': 'Testing'}, 'text/plain'
         c = app.test_client()
-        assert c.get('/unicode').data == u'Hällo Wörld'.encode('utf-8')
-        assert c.get('/string').data == u'Hällo Wörld'.encode('utf-8')
+        self.assertEqual(c.get('/unicode').data, u'Hällo Wörld'.encode('utf-8'))
+        self.assertEqual(c.get('/string').data, u'Hällo Wörld'.encode('utf-8'))
         rv = c.get('/args')
-        assert rv.data == 'Meh'
-        assert rv.headers['X-Foo'] == 'Testing'
-        assert rv.status_code == 400
-        assert rv.mimetype == 'text/plain'
+        self.assertEqual(rv.data, 'Meh')
+        self.assertEqual(rv.headers['X-Foo'], 'Testing')
+        self.assertEqual(rv.status_code, 400)
+        self.assertEqual(rv.mimetype, 'text/plain')
 
     def test_make_response(self):
         app = flask.Flask(__name__)
         with app.test_request_context():
             rv = flask.make_response()
-            assert rv.status_code == 200
-            assert rv.data == ''
-            assert rv.mimetype == 'text/html'
+            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.data, '')
+            self.assertEqual(rv.mimetype, 'text/html')
 
             rv = flask.make_response('Awesome')
-            assert rv.status_code == 200
-            assert rv.data == 'Awesome'
-            assert rv.mimetype == 'text/html'
+            self.assertEqual(rv.status_code, 200)
+            self.assertEqual(rv.data, 'Awesome')
+            self.assertEqual(rv.mimetype, 'text/html')
 
             rv = flask.make_response('W00t', 404)
-            assert rv.status_code == 404
-            assert rv.data == 'W00t'
-            assert rv.mimetype == 'text/html'
+            self.assertEqual(rv.status_code, 404)
+            self.assertEqual(rv.data, 'W00t')
+            self.assertEqual(rv.mimetype, 'text/html')
 
     def test_url_generation(self):
         app = flask.Flask(__name__)
@@ -428,7 +429,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def hello():
             pass
         with app.test_request_context():
-            assert flask.url_for('hello', name='test x') == '/hello/test%20x'
+            self.assertEqual(flask.url_for('hello', name='test x'), '/hello/test%20x')
             assert flask.url_for('hello', name='test x', _external=True) \
                 == 'http://localhost/hello/test%20x'
 
@@ -446,13 +447,13 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         def index(args):
             return '|'.join(args)
         c = app.test_client()
-        assert c.get('/1,2,3').data == '1|2|3'
+        self.assertEqual(c.get('/1,2,3').data, '1|2|3')
 
     def test_static_files(self):
         app = flask.Flask(__name__)
         rv = app.test_client().get('/static/index.html')
-        assert rv.status_code == 200
-        assert rv.data.strip() == '<h1>Hello World!</h1>'
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(rv.data.strip(), '<h1>Hello World!</h1>')
         with app.test_request_context():
             assert flask.url_for('static', filename='index.html') \
                 == '/static/index.html'
@@ -465,7 +466,7 @@ class BasicFunctionalityTestCase(unittest.TestCase):
         try:
             app.test_client().get('/')
         except ValueError, e:
-            assert str(e) == 'View function did not return a response'
+            self.assertEqual(str(e), 'View function did not return a response')
             pass
         else:
             assert "Expected ValueError"
@@ -485,8 +486,8 @@ class JSONTestCase(unittest.TestCase):
         c = app.test_client()
         for url in '/kw', '/dict':
             rv = c.get(url)
-            assert rv.mimetype == 'application/json'
-            assert flask.json.loads(rv.data) == d
+            self.assertEqual(rv.mimetype, 'application/json')
+            self.assertEqual(flask.json.loads(rv.data), d)
 
     def test_json_attr(self):
         app = flask.Flask(__name__)
@@ -496,16 +497,16 @@ class JSONTestCase(unittest.TestCase):
         c = app.test_client()
         rv = c.post('/add', data=flask.json.dumps({'a': 1, 'b': 2}),
                             content_type='application/json')
-        assert rv.data == '3'
+        self.assertEqual(rv.data, '3')
 
     def test_template_escaping(self):
         app = flask.Flask(__name__)
         render = flask.render_template_string
         with app.test_request_context():
             rv = render('{{ "</script>"|tojson|safe }}')
-            assert rv == '"<\\/script>"'
+            self.assertEqual(rv, '"<\\/script>"')
             rv = render('{{ "<\0/script>"|tojson|safe }}')
-            assert rv == '"<\\u0000\\/script>"'
+            self.assertEqual(rv, '"<\\u0000\\/script>"')
 
     def test_modified_url_encoding(self):
         class ModifiedRequest(flask.Request):
@@ -519,8 +520,8 @@ class JSONTestCase(unittest.TestCase):
             return flask.request.args['foo']
 
         rv = app.test_client().get(u'/?foo=정상처리'.encode('euc-kr'))
-        assert rv.status_code == 200
-        assert rv.data == u'정상처리'.encode('utf-8')
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(rv.data, u'정상처리'.encode('utf-8'))
 
 
 class TemplatingTestCase(unittest.TestCase):
@@ -534,7 +535,7 @@ class TemplatingTestCase(unittest.TestCase):
         def index():
             return flask.render_template('context_template.html', value=23)
         rv = app.test_client().get('/')
-        assert rv.data == '<p>23|42'
+        self.assertEqual(rv.data, '<p>23|42')
 
     def test_original_win(self):
         app = flask.Flask(__name__)
@@ -542,7 +543,7 @@ class TemplatingTestCase(unittest.TestCase):
         def index():
             return flask.render_template_string('{{ config }}', config=42)
         rv = app.test_client().get('/')
-        assert rv.data == '42'
+        self.assertEqual(rv.data, '42')
 
     def test_standard_context(self):
         app = flask.Flask(__name__)
@@ -558,7 +559,7 @@ class TemplatingTestCase(unittest.TestCase):
                 {{ session.test }}
             ''')
         rv = app.test_client().get('/?foo=42')
-        assert rv.data.split() == ['42', '23', 'False', 'aha']
+        self.assertEqual(rv.data.split(), ['42', '23', 'False', 'aha'])
 
     def test_escaping(self):
         text = '<p>Hello World!'
@@ -568,14 +569,14 @@ class TemplatingTestCase(unittest.TestCase):
             return flask.render_template('escaping_template.html', text=text,
                                          html=flask.Markup(text))
         lines = app.test_client().get('/').data.splitlines()
-        assert lines == [
+        self.assertEqual(lines, [
             '&lt;p&gt;Hello World!',
             '<p>Hello World!',
             '<p>Hello World!',
             '<p>Hello World!',
             '&lt;p&gt;Hello World!',
             '<p>Hello World!'
-        ]
+        ])
 
     def test_no_escaping(self):
         app = flask.Flask(__name__)
@@ -589,7 +590,7 @@ class TemplatingTestCase(unittest.TestCase):
         app = flask.Flask(__name__)
         with app.test_request_context():
             macro = flask.get_template_attribute('_macro.html', 'hello')
-            assert macro('World') == 'Hello World!'
+            self.assertEqual(macro('World'), 'Hello World!')
 
     def test_template_filter(self):
         app = flask.Flask(__name__)
@@ -597,8 +598,8 @@ class TemplatingTestCase(unittest.TestCase):
         def my_reverse(s):
             return s[::-1]
         assert 'my_reverse' in  app.jinja_env.filters.keys()
-        assert app.jinja_env.filters['my_reverse'] == my_reverse
-        assert app.jinja_env.filters['my_reverse']('abcd') == 'dcba'
+        self.assertEqual(app.jinja_env.filters['my_reverse'], my_reverse)
+        self.assertEqual(app.jinja_env.filters['my_reverse']('abcd'), 'dcba')
 
     def test_template_filter_with_name(self):
         app = flask.Flask(__name__)
@@ -606,8 +607,8 @@ class TemplatingTestCase(unittest.TestCase):
         def my_reverse(s):
             return s[::-1]
         assert 'strrev' in  app.jinja_env.filters.keys()
-        assert app.jinja_env.filters['strrev'] == my_reverse
-        assert app.jinja_env.filters['strrev']('abcd') == 'dcba'
+        self.assertEqual(app.jinja_env.filters['strrev'], my_reverse)
+        self.assertEqual(app.jinja_env.filters['strrev']('abcd'), 'dcba')
 
     def test_template_filter_with_template(self):
         app = flask.Flask(__name__)
@@ -618,7 +619,7 @@ class TemplatingTestCase(unittest.TestCase):
         def index():
             return flask.render_template('template_filter.html', value='abcd')
         rv = app.test_client().get('/')
-        assert rv.data == 'dcba'
+        self.assertEqual(rv.data, 'dcba')
 
     def test_template_filter_with_name_and_template(self):
         app = flask.Flask(__name__)
@@ -629,7 +630,7 @@ class TemplatingTestCase(unittest.TestCase):
         def index():
             return flask.render_template('template_filter.html', value='abcd')
         rv = app.test_client().get('/')
-        assert rv.data == 'dcba'
+        self.assertEqual(rv.data, 'dcba')
 
 
 class ModuleTestCase(unittest.TestCase):
@@ -651,10 +652,10 @@ class ModuleTestCase(unittest.TestCase):
             return 'the index'
         app.register_module(admin)
         c = app.test_client()
-        assert c.get('/').data == 'the index'
-        assert c.get('/admin/').data == 'admin index'
-        assert c.get('/admin/login').data == 'admin login'
-        assert c.get('/admin/logout').data == 'admin logout'
+        self.assertEqual(c.get('/').data, 'the index')
+        self.assertEqual(c.get('/admin/').data, 'admin index')
+        self.assertEqual(c.get('/admin/login').data, 'admin login')
+        self.assertEqual(c.get('/admin/logout').data, 'admin logout')
 
     def test_default_endpoint_name(self):
         app = flask.Flask(__name__)
@@ -664,9 +665,9 @@ class ModuleTestCase(unittest.TestCase):
         mod.add_url_rule('/', view_func=index)
         app.register_module(mod)
         rv = app.test_client().get('/')
-        assert rv.data == 'Awesome'
+        self.assertEqual(rv.data, 'Awesome')
         with app.test_request_context():
-            assert flask.url_for('frontend.index') == '/'
+            self.assertEqual(flask.url_for('frontend.index'), '/')
 
     def test_request_processing(self):
         catched = []
@@ -695,13 +696,13 @@ class ModuleTestCase(unittest.TestCase):
         app.register_module(admin)
         c = app.test_client()
 
-        assert c.get('/').data == 'the index'
-        assert catched == ['before-app', 'after-app']
+        self.assertEqual(c.get('/').data, 'the index')
+        self.assertEqual(catched, ['before-app', 'after-app'])
         del catched[:]
 
-        assert c.get('/admin/').data == 'the admin'
-        assert catched == ['before-app', 'before-admin',
-                           'after-admin', 'after-app']
+        self.assertEqual(c.get('/admin/').data, 'the admin')
+        self.assertEqual(catched, ['before-app', 'before-admin',
+                           'after-admin', 'after-app'])
 
     def test_context_processors(self):
         app = flask.Flask(__name__)
@@ -723,8 +724,8 @@ class ModuleTestCase(unittest.TestCase):
             return flask.render_template_string('{{ a }}{{ b }}{{ c }}')
         app.register_module(admin)
         c = app.test_client()
-        assert c.get('/').data == '13'
-        assert c.get('/admin/').data == '123'
+        self.assertEqual(c.get('/').data, '13')
+        self.assertEqual(c.get('/admin/').data, '123')
 
     def test_late_binding(self):
         app = flask.Flask(__name__)
@@ -733,7 +734,7 @@ class ModuleTestCase(unittest.TestCase):
         def index():
             return '42'
         app.register_module(admin, url_prefix='/admin')
-        assert app.test_client().get('/admin/').data == '42'
+        self.assertEqual(app.test_client().get('/admin/').data, '42')
 
     def test_error_handling(self):
         app = flask.Flask(__name__)
@@ -753,24 +754,24 @@ class ModuleTestCase(unittest.TestCase):
         app.register_module(admin)
         c = app.test_client()
         rv = c.get('/')
-        assert rv.status_code == 404
-        assert rv.data == 'not found'
+        self.assertEqual(rv.status_code, 404)
+        self.assertEqual(rv.data, 'not found')
         rv = c.get('/error')
-        assert rv.status_code == 500
-        assert 'internal server error' == rv.data
+        self.assertEqual(rv.status_code, 500)
+        self.assertEqual('internal server error', rv.data)
 
     def test_templates_and_static(self):
         from moduleapp import app
         c = app.test_client()
 
         rv = c.get('/')
-        assert rv.data == 'Hello from the Frontend'
+        self.assertEqual(rv.data, 'Hello from the Frontend')
         rv = c.get('/admin/')
-        assert rv.data == 'Hello from the Admin'
+        self.assertEqual(rv.data, 'Hello from the Admin')
         rv = c.get('/admin/static/test.txt')
-        assert rv.data.strip() == 'Admin File'
+        self.assertEqual(rv.data.strip(), 'Admin File')
         rv = c.get('/admin/static/css/test.css')
-        assert rv.data.strip() == '/* nested file */'
+        self.assertEqual(rv.data.strip(), '/* nested file */')
 
         with app.test_request_context():
             assert flask.url_for('admin.static', filename='test.txt') \
@@ -780,12 +781,12 @@ class ModuleTestCase(unittest.TestCase):
             try:
                 flask.render_template('missing.html')
             except TemplateNotFound, e:
-                assert e.name == 'missing.html'
+                self.assertEqual(e.name, 'missing.html')
             else:
                 assert 0, 'expected exception'
 
         with flask.Flask(__name__).test_request_context():
-            assert flask.render_template('nested/nested.txt') == 'I\'m nested'
+            self.assertEqual(flask.render_template('nested/nested.txt'), 'I\'m nested')
 
     def test_safe_access(self):
         from moduleapp import app
@@ -814,9 +815,9 @@ class SendfileTestCase(unittest.TestCase):
         with app.test_request_context():
             rv = flask.send_file('static/index.html')
             assert rv.direct_passthrough
-            assert rv.mimetype == 'text/html'
+            self.assertEqual(rv.mimetype, 'text/html')
             with app.open_resource('static/index.html') as f:
-                assert rv.data == f.read()
+                self.assertEqual(rv.data, f.read())
 
     def test_send_file_xsendfile(self):
         app = flask.Flask(__name__)
@@ -825,9 +826,9 @@ class SendfileTestCase(unittest.TestCase):
             rv = flask.send_file('static/index.html')
             assert rv.direct_passthrough
             assert 'x-sendfile' in rv.headers
-            assert rv.headers['x-sendfile'] == \
-                os.path.join(app.root_path, 'static/index.html')
-            assert rv.mimetype == 'text/html'
+            self.assertEqual(rv.headers['x-sendfile'],
+                os.path.join(app.root_path, 'static/index.html'))
+            self.assertEqual(rv.mimetype, 'text/html')
 
     def test_send_file_object(self):
         app = flask.Flask(__name__)
@@ -835,28 +836,28 @@ class SendfileTestCase(unittest.TestCase):
             f = open(os.path.join(app.root_path, 'static/index.html'))
             rv = flask.send_file(f)
             with app.open_resource('static/index.html') as f:
-                assert rv.data == f.read()
-            assert rv.mimetype == 'text/html'
+                self.assertEqual(rv.data, f.read())
+            self.assertEqual(rv.mimetype, 'text/html')
 
         app.use_x_sendfile = True
         with app.test_request_context():
             f = open(os.path.join(app.root_path, 'static/index.html'))
             rv = flask.send_file(f)
-            assert rv.mimetype == 'text/html'
+            self.assertEqual(rv.mimetype, 'text/html')
             assert 'x-sendfile' in rv.headers
-            assert rv.headers['x-sendfile'] == \
-                os.path.join(app.root_path, 'static/index.html')
+            self.assertEqual(rv.headers['x-sendfile'],
+                os.path.join(app.root_path, 'static/index.html'))
 
         app.use_x_sendfile = False
         with app.test_request_context():
             f = StringIO('Test')
             rv = flask.send_file(f)
-            assert rv.data == 'Test'
-            assert rv.mimetype == 'application/octet-stream'
+            self.assertEqual(rv.data, 'Test')
+            self.assertEqual(rv.mimetype, 'application/octet-stream')
             f = StringIO('Test')
             rv = flask.send_file(f, mimetype='text/plain')
-            assert rv.data == 'Test'
-            assert rv.mimetype == 'text/plain'
+            self.assertEqual(rv.data, 'Test')
+            self.assertEqual(rv.mimetype, 'text/plain')
 
         app.use_x_sendfile = True
         with app.test_request_context():
@@ -870,22 +871,22 @@ class SendfileTestCase(unittest.TestCase):
             f = open(os.path.join(app.root_path, 'static/index.html'))
             rv = flask.send_file(f, as_attachment=True)
             value, options = parse_options_header(rv.headers['Content-Disposition'])
-            assert value == 'attachment'
+            self.assertEqual(value, 'attachment')
 
         with app.test_request_context():
-            assert options['filename'] == 'index.html'
+            self.assertEqual(options['filename'], 'index.html')
             rv = flask.send_file('static/index.html', as_attachment=True)
             value, options = parse_options_header(rv.headers['Content-Disposition'])
-            assert value == 'attachment'
-            assert options['filename'] == 'index.html'
+            self.assertEqual(value, 'attachment')
+            self.assertEqual(options['filename'], 'index.html')
 
         with app.test_request_context():
             rv = flask.send_file(StringIO('Test'), as_attachment=True,
                                  attachment_filename='index.txt')
-            assert rv.mimetype == 'text/plain'
+            self.assertEqual(rv.mimetype, 'text/plain')
             value, options = parse_options_header(rv.headers['Content-Disposition'])
-            assert value == 'attachment'
-            assert options['filename'] == 'index.txt'
+            self.assertEqual(value, 'attachment')
+            self.assertEqual(options['filename'], 'index.txt')
 
 
 class LoggingTestCase(unittest.TestCase):
@@ -894,7 +895,7 @@ class LoggingTestCase(unittest.TestCase):
         app = flask.Flask(__name__)
         logger1 = app.logger
         assert app.logger is logger1
-        assert logger1.name == __name__
+        self.assertEqual(logger1.name, __name__)
         app.logger_name = __name__ + '/test_logger_cache'
         assert app.logger is not logger1
 
@@ -940,7 +941,7 @@ class LoggingTestCase(unittest.TestCase):
             1/0
 
         rv = app.test_client().get('/')
-        assert rv.status_code == 500
+        self.assertEqual(rv.status_code, 500)
         assert 'Internal Server Error' in rv.data
 
         err = out.getvalue()
@@ -968,15 +969,15 @@ class LoggingTestCase(unittest.TestCase):
             return 'Hello Server Error', 500
         for trigger in 'before', 'after':
             rv = app.test_client().get('/')
-            assert rv.status_code == 500
-            assert rv.data == 'Hello Server Error'
+            self.assertEqual(rv.status_code, 500)
+            self.assertEqual(rv.data, 'Hello Server Error')
 
 
 class ConfigTestCase(unittest.TestCase):
 
     def common_object_test(self, app):
-        assert app.secret_key == 'devkey'
-        assert app.config['TEST_KEY'] == 'foo'
+        self.assertEqual(app.secret_key, 'devkey')
+        self.assertEqual(app.config['TEST_KEY'], 'foo')
         assert 'ConfigTestCase' not in app.config
 
     def test_config_from_file(self):
@@ -1033,10 +1034,10 @@ class SubdomainTestCase(unittest.TestCase):
 
         c = app.test_client()
         rv = c.get('/', 'http://localhost/')
-        assert rv.data == 'normal index'
+        self.assertEqual(rv.data, 'normal index')
 
         rv = c.get('/', 'http://test.localhost/')
-        assert rv.data == 'test index'
+        self.assertEqual(rv.data, 'test index')
 
     def test_subdomain_matching(self):
         app = flask.Flask(__name__)
@@ -1047,7 +1048,7 @@ class SubdomainTestCase(unittest.TestCase):
 
         c = app.test_client()
         rv = c.get('/', 'http://mitsuhiko.localhost/')
-        assert rv.data == 'index for mitsuhiko'
+        self.assertEqual(rv.data, 'index for mitsuhiko')
 
     def test_module_subdomain_support(self):
         app = flask.Flask(__name__)
@@ -1066,9 +1067,9 @@ class SubdomainTestCase(unittest.TestCase):
 
         c = app.test_client()
         rv = c.get('/test', 'http://testing.localhost/')
-        assert rv.data == 'Test'
+        self.assertEqual(rv.data, 'Test')
         rv = c.get('/outside', 'http://xtesting.localhost/')
-        assert rv.data == 'Outside'
+        self.assertEqual(rv.data, 'Outside')
 
 
 class TestSignals(unittest.TestCase):
@@ -1087,10 +1088,10 @@ class TestSignals(unittest.TestCase):
         flask.template_rendered.connect(record, app)
         try:
             rv = app.test_client().get('/')
-            assert len(recorded) == 1
+            self.assertEqual(len(recorded), 1)
             template, context = recorded[0]
-            assert template.name == 'simple_template.html'
-            assert context['whiskey'] == 42
+            self.assertEqual(template.name, 'simple_template.html')
+            self.assertEqual(context['whiskey'], 42)
         finally:
             flask.template_rendered.disconnect(record, app)
 
@@ -1102,7 +1103,7 @@ class TestSignals(unittest.TestCase):
             calls.append('before-signal')
 
         def after_request_signal(sender, response):
-            assert response.data == 'stuff'
+            self.assertEqual(response.data, 'stuff')
             calls.append('after-signal')
 
         @app.before_request
@@ -1125,11 +1126,11 @@ class TestSignals(unittest.TestCase):
 
         try:
             rv = app.test_client().get('/')
-            assert rv.data == 'stuff'
+            self.assertEqual(rv.data, 'stuff')
 
-            assert calls == ['before-signal', 'before-handler',
+            self.assertEqual(calls, ['before-signal', 'before-handler',
                              'handler', 'after-handler',
-                             'after-signal']
+                             'after-signal'])
         finally:
             flask.request_started.disconnect(before_request_signal, app)
             flask.request_finished.disconnect(after_request_signal, app)
@@ -1147,8 +1148,8 @@ class TestSignals(unittest.TestCase):
 
         flask.got_request_exception.connect(record, app)
         try:
-            assert app.test_client().get('/').status_code == 500
-            assert len(recorded) == 1
+            self.assertEqual(app.test_client().get('/').status_code, 500)
+            self.assertEqual(len(recorded), 1)
             assert isinstance(recorded[0], ZeroDivisionError)
         finally:
             flask.got_request_exception.disconnect(record, app)
