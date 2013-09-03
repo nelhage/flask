@@ -122,14 +122,13 @@ class BasicFunctionalityTestCase(unittest.TestCase):
 
     def test_options_on_multiple_rules(self):
         app = flask.Flask(__name__)
-        @app.route('/', methods=['GET', 'POST'])
+        @app.route('/<int:a>', methods=['GET', 'POST'])
         def index():
             return 'Hello World'
-        @app.route('/', methods=['PUT'])
+        @app.route('/<int:b>', methods=['PUT'])
         def index_put():
             return 'Aha!'
-        flask.woohoo = True
-        rv = app.test_client().open('/', method='OPTIONS')
+        rv = app.test_client().open('/2', method='OPTIONS')
         self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT'])
 
     def test_request_dispatching(self):
