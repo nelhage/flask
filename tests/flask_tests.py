@@ -123,10 +123,10 @@ class BasicFunctionalityTestCase(unittest.TestCase):
     def test_options_on_multiple_rules(self):
         app = flask.Flask(__name__)
         @app.route('/<int:a>', methods=['GET', 'POST'])
-        def index():
+        def index(a):
             return 'Hello World'
         @app.route('/<int:b>', methods=['PUT'])
-        def index_put():
+        def index_put(b):
             return 'Aha!'
         rv = app.test_client().open('/2', method='OPTIONS')
         self.assertEqual(sorted(rv.allow), ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT'])
