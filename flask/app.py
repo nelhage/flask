@@ -19,7 +19,7 @@ from jinja2 import Environment
 
 from werkzeug import ImmutableDict
 from werkzeug.routing import Map, Rule
-from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.exceptions import HTTPException, InternalServerError, MethodNotAllowed
 
 from .helpers import _PackageBoundObject, url_for, get_flashed_messages, \
     _tojson_filter, _endpoint_from_view_func
@@ -505,12 +505,7 @@ class Flask(_PackageBoundObject):
             endpoint = _endpoint_from_view_func(view_func)
         options['endpoint'] = endpoint
         methods = options.pop('methods', ('GET',))
-        provide_automatic_options = False
-        if 'OPTIONS' not in methods:
-            methods = tuple(methods) + ('OPTIONS',)
-            provide_automatic_options = True
         rule = Rule(rule, methods=methods, **options)
-        rule.provide_automatic_options = provide_automatic_options
         self.url_map.add(rule)
         if view_func is not None:
             self.view_functions[endpoint] = view_func
@@ -686,14 +681,16 @@ class Flask(_PackageBoundObject):
             if req.routing_exception is not None:
                 raise req.routing_exception
             rule = req.url_rule
-            # if we provide automatic options for this URL and the
-            # request came with the OPTIONS method, reply automatically 
-            if rule.provide_automatic_options and req.method == 'OPTIONS':
-                rv = self.response_class()
-                rv.allow.update(rule.methods)
-                return rv
-            # otherwise dispatch to the handler for that endpoint
+            # dispatch to the handler for that endpoint
             return self.view_functions[rule.endpoint](**req.view_args)
+        except MethodNotAllowed, e:
+            if req.method == 'OPTIONS':
+                rv = self.response_class()
+                rv.allow.update(e.valid_methods)
+                rv.allow.update(['OPTIONS'])
+                return rv
+            e.valid_methods.append('OPTIONS')
+            return self.handle_http_exception(e)
         except HTTPException, e:
             return self.handle_http_exception(e)
 
